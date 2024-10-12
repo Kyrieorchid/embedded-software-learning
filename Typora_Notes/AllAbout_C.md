@@ -97,3 +97,10 @@ const只是修饰变量，不能通过变量名直接操作对应内存，可通
 
 ***
 
+##### Defination & Declaration
+
+* A definition of a variable allocates memory for it. For example: int X; is a definition.
+* A declaration merely tells the compiler that the variable exists somewhere, but doesn't allocate memory. For example: extern int X; is a declaration.
+* When you include a.h in both main.c and a.c, the contents of a.h are copied into both source files during preprocessing.
+* If a.h contains a definition like int X;, then X is defined in both main.c and a.c. This results in two separate definitions of X when these object files are linked together, causing the linker to generate an error: `duplicate symbol`.
+* So, <b>defination</b> in one source file and <b>declaration</b> in corresponding heard file.
