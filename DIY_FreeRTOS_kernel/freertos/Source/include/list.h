@@ -21,6 +21,20 @@
 #define listGET_OWNER_OF_HEAD_ENTRY(pxList) \
 				((pxList)->xListEnd.pxNext->pvOwner)
 				
+#define listLIST_IS_EMPTY(pxList) \
+					(UBaseType_t)((pxList)->uxNumberOfItems == (UBaseType_t)0)
+				
+#define listGET_OWNER_OF_NEXT_ENTRY(pxTCB, pxList) \
+				{ \
+					List_t * const pxConstList = (pxList); \
+					pxConstList->pxIndex = pxConstList->pxIndex->pxNext; \
+					/*Skip end_item, but it's meaningless when pxList is empty.*/ \
+					if((void *)pxConstList->pxIndex == (void *)&(pxConstList->xListEnd)) \
+					{ \
+						pxConstList->pxIndex = pxConstList->pxIndex->pxNext; \
+					} \
+					(pxTCB) = pxConstList->pxIndex->pvOwner; \
+				}
 /*To be continued...*/
 				
 typedef struct xLIST_ITEM

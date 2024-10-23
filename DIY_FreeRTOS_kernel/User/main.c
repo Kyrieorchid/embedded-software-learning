@@ -53,17 +53,19 @@ int main(void)
 																	(char *)"Task1",
 																	(uint32_t)TASK_STACK_SIZE,
 																	NULL,
+																	(UBaseType_t)1,
 																	(StackType_t *)Task1Stack,
 																	(TCB_t *)&Task1TCB);
 	Task2Handle = xTaskCreateStatic((TaskFunction_t)Task2_Entry,
 																	(char *)"Task2",
 																	(uint32_t)TASK_STACK_SIZE,
 																	NULL,
+																	(UBaseType_t) 2,
 																	(StackType_t *)Task2Stack,
 																	(TCB_t *)&Task2TCB);
 	
-	vListInsertEnd(&pxReadyTaskLists[1], (ListItem_t *)(&Task1TCB.xStateListItem));
-	vListInsertEnd(&pxReadyTaskLists[2], (ListItem_t *)(&Task2TCB.xStateListItem));
+	//vListInsertEnd(&pxReadyTaskLists[1], (ListItem_t *)(&Task1TCB.xStateListItem));
+	//vListInsertEnd(&pxReadyTaskLists[2], (ListItem_t *)(&Task2TCB.xStateListItem));
 	
 	vTaskStartScheduler();
 	
@@ -73,8 +75,6 @@ int main(void)
 	}
 #endif /*TASK_DEF_SWITCH*/
 	
-	
-	return 0;
 }
 
 void delay(uint32_t count)

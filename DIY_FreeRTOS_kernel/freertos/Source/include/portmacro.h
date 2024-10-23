@@ -17,6 +17,8 @@
 #define portSTACK_TYPE uint32_t
 #define portBASE_TYPE long
 
+#define configUSE_OPTIMISED_TASK_SELECTION 1
+
 #define portNVIC_INT_CTRL_REG (*((volatile uint32_t *)0xe000ed04))
 #define portNVIC_PENDSVSET_BIT (1UL << 28UL)
 #define portSY_FULL_READ_WRITE (15)
@@ -26,6 +28,11 @@
 	__dsb( portSY_FULL_READ_WRITE );\
 	__isb( portSY_FULL_READ_WRITE );\
 }
+
+/*Using leading zero, every single bit of uxTopReadyPriority is a priority, 
+'1' represents ready, therefore 31 minus 'lz' is the top ready priority.*/
+#define protGET_HIGHEST_PRIORITY(uxTopPriority, uxTopReadyPriority) \
+				(uxTopPriority) = (31UL - (uint32_t)__clz((uxTopReadyPriority)))
 
 void vPortEnterCritical(void);
 void vPortExitCritical(void);

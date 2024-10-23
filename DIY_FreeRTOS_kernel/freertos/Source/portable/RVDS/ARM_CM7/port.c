@@ -6,7 +6,6 @@
 /* Masks off all bits but the VECTACTIVE bits in the ICSR register. */
 #define portVECTACTIVE_MASK					( 0xFFUL )
 
-TickType_t xTickCount;
 void xTaskIncrementTick(void);
 void vPortSetupTimerInterrupt(void);
 
@@ -180,26 +179,6 @@ void xPortSysTickHandler(void)
 	xTaskIncrementTick();
 	
 	portENABLE_INTERRUPTS();
-}
-
-void xTaskIncrementTick(void)
-{
-	TCB_t * pxTCB = NULL;
-	BaseType_t i = 0;
-	
-	const TickType_t xConstTickCount = xTickCount + 1;
-	xTickCount = xConstTickCount;
-	
-	for(i = 0;i < configMAX_PRIORITIES;i++)
-	{
-		pxTCB = (TCB_t *)listGET_OWNER_OF_HEAD_ENTRY(&pxReadyTaskLists[i]);
-		if(pxTCB->xTicksToDelay > 0)
-		{
-			pxTCB->xTicksToDelay --;
-		}
-	}
-	
-	portYIELD();
 }
 
 void vPortSetupTimerInterrupt(void)
