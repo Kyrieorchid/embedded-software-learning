@@ -11,7 +11,7 @@ void vListInitilise(List_t * pxList)
 	pxList->xListEnd.xItemValue = portMAX_DELAY;
 	pxList->xListEnd.pxNext = (ListItem_t *)&(pxList->xListEnd);
 	pxList->xListEnd.pxPrevious = (ListItem_t *)&(pxList->xListEnd);
-	pxList->uxNumbersOfItems = (UBaseType_t)0U;
+	pxList->uxNumberOfItems = (UBaseType_t)0U;
 }
 
 void vListInsertEnd(List_t * const pxList, ListItem_t * const pxNewListItem_t)
@@ -25,7 +25,7 @@ void vListInsertEnd(List_t * const pxList, ListItem_t * const pxNewListItem_t)
 	pxIndex->pxPrevious = pxNewListItem_t;
 	
 	pxNewListItem_t->pvContainer = pxList;
-	(pxList->uxNumbersOfItems)++;
+	(pxList->uxNumberOfItems)++;
 }
 
 void vListInsert(List_t * const pxList, ListItem_t * const pxNewListItem)
@@ -55,7 +55,7 @@ void vListInsert(List_t * const pxList, ListItem_t * const pxNewListItem)
 	pxIterator->pxNext = pxNewListItem;
 	
 	pxNewListItem->pvContainer = (void *)pxList;
-	(pxList->uxNumbersOfItems)++;
+	(pxList->uxNumberOfItems)++;
 }
 
 UBaseType_t uxListRemove(ListItem_t * const pxItemToRemove)
@@ -72,5 +72,5 @@ UBaseType_t uxListRemove(ListItem_t * const pxItemToRemove)
 	
 	pxItemToRemove->pvContainer = NULL;
 
-	return --(pxList->uxNumbersOfItems);
+	return --(pxList->uxNumberOfItems);
 }

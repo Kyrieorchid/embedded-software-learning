@@ -1,21 +1,26 @@
-#include "FreeRTOS.h"
 #include "task.h"
-#include "list.h"
-#include "port.h"
 
 TCB_t * pxCurrentTCB;
 TickType_t xTickCount;
+UBaseType_t xNumOfOverflows;
+
+static TickType_t xNextTaskUnblockTime;
+
 extern TCB_t Task1TCB, Task2TCB, IdleTaskTCB;
 extern StackType_t IdleTaskStack[configMINIMAL_STACK_SIZE];
 extern TaskHandle_t xIdleTaskHandle;
 extern TCB_t IdleTaskTCB;
 extern StackType_t IdleTaskStack[configMINIMAL_STACK_SIZE];
+
 List_t pxReadyTaskLists[configMAX_PRIORITIES];
+static List_t xDelayedTaskList1, xDelayedTaskList2;
+static List_t * volatile pxDelayedTaskList;
+static List_t * volatile pxOverflowDelayedTaskList;
 
 static volatile UBaseType_t uxTopReadyPriority = tskIDLE_PRIORIY;
 static volatile UBaseType_t uxCurrentNumberOfTasks = 0;
 
-#define prvAddTaksToReadList(pxTCB) \
+#define prvAddTaksToReadyList(pxTCB) \
 				taskRECORD_READY_PRIORITY((pxTCB)->uxPriority); \
 				vListInsertEnd(&(pxReadyTaskLists[(pxTCB)->uxPriority]), &((pxTCB)->xStateListItem));
 
@@ -63,10 +68,10 @@ static volatile UBaseType_t uxCurrentNumberOfTasks = 0;
 	
 	/**************************************************/
 	
-#if 0
-	#define taskRESET_READY_PRIORITY(uxPriority) \//Attention
+#if 1
+	#define taskRESET_READY_PRIORITY(uxPriority) \
 	{ \
-		if(listCURRENT_LIST_LENGTH(&(pxReadyList[(uxTopPriority)])) == (UBaseType_t)0)\
+		if(listCURRENT_LIST_LENGTH(&(pxReadyTaskLists[(uxPriority)])) == (UBaseType_t)0)\
 		{ \
 			portRESET_READY_PRIORITY((uxPriority), uxTopReadyPriority); \
 		} \
@@ -80,14 +85,44 @@ static volatile UBaseType_t uxCurrentNumberOfTasks = 0;
 	
 #endif /*configUSE_OPTIMISED_TASK_SELECTION*/
 /*Look for ready task with the highest priority==========================*/
+	
+static void prvResetNextTaskUnblockTime();
+	
+#define taskSWITCH_DELAYED_LISTS()					\
+{													\
+	List_t * pxTemp;								\
+	pxTemp = pxDelayedTaskList;						\
+	pxDelayedTaskList = pxOverflowDelayedTaskList;	\
+	pxOverflowDelayedTaskList = pxTemp;				\
+	xNumOfOverflows++;								\
+	prvResetNextTaskUnblockTime();					\
+}													\
 
-static void prvInitialiseNewTask(TaskFunction_t pxTaskCode, const char * const pcName,
-																const uint32_t ulStackDepth, void * const pvParameters,
-																UBaseType_t uxPriority,TaskHandle_t * const pxCreatedTask,
-																TCB_t * pxNewTCB)
+static void prvResetNextTaskUnblockTime()
+{
+	TCB_t * pxTCB;
+	
+	if((listLIST_IS_EMPTY(pxDelayedTaskList)) != pdFALSE)
+	{
+		xNextTaskUnblockTime = portMAX_DELAY;
+	}
+	else
+	{
+		pxTCB = (TCB_t *)listGET_OWNER_OF_HEAD_ENTRY(pxDelayedTaskList);
+		xNextTaskUnblockTime = listGET_LIST_ITEM_VALUE(&(pxTCB->xStateListItem));
+	}
+}
+
+static void prvInitialiseNewTask(TaskFunction_t pxTaskCode,
+									const char * const pcName,
+									const uint32_t ulStackDepth,
+									void * const pvParameters,
+									UBaseType_t uxPriority,
+									TaskHandle_t * const pxCreatedTask,
+									TCB_t * pxNewTCB)
 {
 	/*Actually initialise the TCB of new task.*/
-	StackType_t *pxTopOfStack;
+	StackType_t * pxTopOfStack;
 	UBaseType_t x;
 	
 	pxTopOfStack = pxNewTCB->pxStack + (ulStackDepth - (uint32_t)1);
@@ -102,7 +137,7 @@ static void prvInitialiseNewTask(TaskFunction_t pxTaskCode, const char * const p
 		}
 	}
 	
-	pxNewTCB->pcTaskName[configMAX_TASK_NAME_LEN - 1] = '\0'; //Cut off.
+	pxNewTCB->pcTaskName[configMAX_TASK_NAME_LEN - 1] = '\0'; //Cut off to make sure 'configMAX_TASK_NAME_LEN'.
 	
 	vListInitialiseItem(&(pxNewTCB->xStateListItem));
 	listSET_LIST_ITEM_OWNER(&(pxNewTCB->xStateListItem), pxNewTCB);
@@ -129,7 +164,7 @@ static void prvAddNewTaskToReadyList(TCB_t *pxNewTCB)
 		uxCurrentNumberOfTasks++;
 		if(pxCurrentTCB == NULL)
 		{
-			pxNewTCB = pxNewTCB;
+			pxCurrentTCB = pxNewTCB;
 			if(uxCurrentNumberOfTasks ==	1)
 			{
 				prvInitialiseTaskLists();
@@ -139,11 +174,11 @@ static void prvAddNewTaskToReadyList(TCB_t *pxNewTCB)
 		{
 			if(pxCurrentTCB->uxPriority <= pxNewTCB->uxPriority)
 			{
-				pxCurrentTCB = pxNewTCB;
+				pxCurrentTCB = pxNewTCB; // 'pxCurrentTCB' always point to the task with the highest priority.
 			}
 		}
 		
-		prvAddTaksToReadList(pxNewTCB);
+		prvAddTaksToReadyList(pxNewTCB);
 	}
 	taskEXIT_CRITICAL();
 }
@@ -180,12 +215,20 @@ static void prvAddNewTaskToReadyList(TCB_t *pxNewTCB)
 
 void prvInitialiseTaskLists(void)
 {
+	// Initialise ready list.
 	UBaseType_t uxPriority;
 	
 	for(uxPriority = (UBaseType_t)0U;uxPriority < configMAX_PRIORITIES;uxPriority++)
 	{
 		vListInitilise(&(pxReadyTaskLists[uxPriority]));
 	}
+	
+	// Initialise delay list.
+	vListInitilise(&xDelayedTaskList1);
+	vListInitilise(&xDelayedTaskList2);
+	
+	pxDelayedTaskList = &xDelayedTaskList1;
+	pxOverflowDelayedTaskList = &xDelayedTaskList2;
 }
 
 /*************************************/
@@ -215,10 +258,12 @@ void vTaskStartScheduler(void)
 																				(UBaseType_t)tskIDLE_PRIORIY,
 																				(StackType_t *)pxIdleTaskStackBuffer,
 																				(TCB_t *)pxIdleTaskTCBBuffer);
-	//vListInsertEnd(&(pxReadyTaskLists[0]), &(pxIdleTaskTCBBuffer->xStateListItem));
+	//vListInsertEnd(&(pxReadyTaskLists[0]), &(pxIdleTaskTCBBuffer->xStateListItem)); //Already insert in xTaskCreateStatic.
 	/***************************************************************/
-	
-	pxCurrentTCB = &Task1TCB;
+	xNextTaskUnblockTime = portMAX_DELAY;
+	xTickCount = (TickType_t)0U;
+	/***************************************************************/
+	//pxCurrentTCB = &Task1TCB; //Already modify pxCurrentTCB in xTaskCreateStatic.
 	if(xPortStartScheduler() != pdFALSE)
 	{
 		//Never supposed to get here as scheduler started by 'xPortStartScheduler'.
@@ -301,14 +346,16 @@ void vTaskSwitchContext(void)
 */
 }
 
-void xTaskIncrementTick(void)
+BaseType_t xTaskIncrementTick(void)
 {
 	TCB_t * pxTCB = NULL;
-	BaseType_t i = 0;
+	TickType_t xItemValue;
+	BaseType_t xSwitchRequired = pdFALSE;
 	
 	const TickType_t xConstTickCount = xTickCount + 1;
 	xTickCount = xConstTickCount;
 	
+/*
 	for(i = 0;i < configMAX_PRIORITIES;i++)
 	{
 		pxTCB = (TCB_t *)listGET_OWNER_OF_HEAD_ENTRY(&pxReadyTaskLists[i]);
@@ -322,21 +369,110 @@ void xTaskIncrementTick(void)
 			}
 		}
 	}
+*/	
+	if(xConstTickCount == (TickType_t)0U)
+	{
+		taskSWITCH_DELAYED_LISTS();
+	}
 	
-	portYIELD();
+	if(xConstTickCount >= xNextTaskUnblockTime)// '>=' cause overflow
+	{
+		for(;;)
+		{
+			// Delay list is empty.
+			if((listLIST_IS_EMPTY(pxDelayedTaskList)) != pdFALSE)
+			{
+				xNextTaskUnblockTime = portMAX_DELAY;
+				break;
+			}
+			else
+			{
+				pxTCB = (TCB_t *)listGET_OWNER_OF_HEAD_ENTRY(pxDelayedTaskList);
+				xItemValue = listGET_LIST_ITEM_VALUE(&(pxTCB->xStateListItem));
+				
+				/****If a overflow task has been inserted,
+				'xNextTaskUnblockTime' will bechanged incorrectly,
+				modify here.****/
+				if(xConstTickCount < xItemValue)
+				{
+					xNextTaskUnblockTime = xItemValue;
+					break;
+				}
+				
+				(void)uxListRemove(&(pxTCB->xStateListItem));
+				prvAddTaksToReadyList(pxTCB);
+				
+				#if(configUSE_PREEMPTION == 1)
+				{
+					if(pxTCB->uxPriority >= pxCurrentTCB->uxPriority)
+					{
+						xSwitchRequired = pdTRUE;
+					}
+				}
+				#endif /*configUSE_PREEMPTION*/
+			}
+		}
+	}/*xConstTickCount >= xNextTaskUnblockTime*/
+	
+	#if((configUSE_PREEMPTION == 1) && (configUSE_TIME_SLICING == 1))
+	{
+		if((listCURRENT_LIST_LENGTH(&(pxReadyTaskLists[pxCurrentTCB->uxPriority]))) > (UBaseType_t)1)
+		{
+			xSwitchRequired = pdTRUE;
+		}
+	}
+	#endif /*(configUSE_PREEMPTION == 1) && (configUSE_TIME_SLICING == 1)*/
+	
+	return xSwitchRequired;
+	//portYIELD();
+}
+
+static void prvAddCurrentTaskToDelayedList(TickType_t xTicks2Delay)
+{
+	TickType_t xTimeToWake;
+	
+	const TickType_t xConstTickCount = xTickCount;
+	if((uxListRemove(&(pxCurrentTCB->xStateListItem))) == (UBaseType_t)0U)
+	{
+		taskRESET_READY_PRIORITY(pxCurrentTCB->uxPriority);
+	}
+	
+	xTimeToWake = xConstTickCount + xTicks2Delay;
+	
+	listSET_LIST_ITEM_VALUE(&(pxCurrentTCB->xStateListItem), xTimeToWake);
+	
+	// xTimeToWake overflow.
+	if(xTimeToWake < xConstTickCount)
+	{
+		vListInsert(pxOverflowDelayedTaskList, &(pxCurrentTCB->xStateListItem));
+	}
+	else
+	{
+		vListInsert(pxDelayedTaskList, &(pxCurrentTCB->xStateListItem));		
+	}
+	
+	if(xTimeToWake < xNextTaskUnblockTime)
+	{
+		// 'xNextTaskUnblockTime' is always the fisrt task's unblock time.
+		// If overflow, 'xNextTaskUnblockTime' is changed incorrectly here.
+		xNextTaskUnblockTime = xTimeToWake;
+	}
 }
 
 void vTaskDelay(const TickType_t xTicks2Delay)
 {
 	TCB_t *pxTCB = NULL;
 	pxTCB = pxCurrentTCB;
-	
+
+	/**********************************	
 	pxTCB->xTicksToDelay = xTicks2Delay;
-	
-	/*Delay list is not supported yet.
+	Delay list is not supported yet.
 	uxListRemove(&(pxTCB->xStateListItem));
-	*/
 	taskRESET_READY_PRIORITY(pxTCB->uxPriority);
+	**********************************/
+	
+	//Insert current task to delay list with xTicks2Delay.
+	prvAddCurrentTaskToDelayedList(xTicks2Delay);
 	
 	taskYIELD();
 }

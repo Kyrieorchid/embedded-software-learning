@@ -6,7 +6,7 @@
 /* Masks off all bits but the VECTACTIVE bits in the ICSR register. */
 #define portVECTACTIVE_MASK					( 0xFFUL )
 
-void xTaskIncrementTick(void);
+BaseType_t xTaskIncrementTick(void);
 void vPortSetupTimerInterrupt(void);
 
 /* Each task maintains its own interrupt status in the critical nesting
@@ -24,7 +24,7 @@ StackType_t *pxPortInitialiseStack(StackType_t * pxTopOfStack, TaskFunction_t px
 	/*Stack Structure
 		xPSR		(bit24==1)
 		r15(PC)	entry of task function
-		r14(LR)	entry of prvTaskExitError(), when task function returns, which is not expected
+		r14(LR)	entry of prvTaskExitError(), when task function returns which is not expected.
 		r12:0
 	  r3:0
 	  r2:0
@@ -176,7 +176,10 @@ void xPortSysTickHandler(void)
 	known. */
 	portDISABLE_INTERRUPTS();
 	//Update system_time_base counter
-	xTaskIncrementTick();
+	if(xTaskIncrementTick() != pdFALSE)
+	{
+		taskYIELD();
+	}
 	
 	portENABLE_INTERRUPTS();
 }

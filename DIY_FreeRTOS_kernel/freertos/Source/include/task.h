@@ -3,6 +3,7 @@
 
 #include "FreeRTOS.h"
 #include "list.h"
+#include "port.h"
 #include "portmacro.h"
 
 #define tskIDLE_PRIORIY ((UBaseType_t)0U)
@@ -39,5 +40,5 @@ TaskHandle_t xTaskCreateStatic(TaskFunction_t pxTaskCode,
 void prvInitialiseTaskLists(void);
 void vTaskStartScheduler(void);
 void vTaskDelay(const TickType_t xTicks2Delay);			
-void xTaskIncrementTick(void);																	
+BaseType_t xTaskIncrementTick(void);																	
 #endif /*TASK_H*/

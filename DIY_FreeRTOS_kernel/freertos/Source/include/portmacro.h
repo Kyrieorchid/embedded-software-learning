@@ -42,6 +42,18 @@ void vPortExitCritical(void);
 /*Disable intrrupt without return.*/
 #define portDISABLE_INTERRUPTS() vPortRaiseBASEPRI()
 
+typedef portSTACK_TYPE StackType_t;
+typedef long BaseType_t;
+typedef unsigned long UBaseType_t;
+
+#if( configUSE_16_BIT_TICKS == 1 )
+typedef uint16_t TickType_t;
+#define portMAX_DELAY ( TickType_t ) 0xffff
+#else
+typedef uint32_t TickType_t;
+#define portMAX_DELAY ( TickType_t ) 0xffffffffUL
+#endif
+
 static portFORCE_INLINE void vPortRaiseBASEPRI(void)
 {
 	uint32_t ulNewBASEPRI = configMAX_SYSCALL_INTERRUPT_PRIORITY;
@@ -83,17 +95,5 @@ static portFORCE_INLINE void vPortSetBASEPRI(uint32_t ulBASEPRI)
 		msr basepri, ulBASEPRI
 	}
 }
-
-typedef portSTACK_TYPE StackType_t;
-typedef long BaseType_t;
-typedef unsigned long UBaseType_t;
-
-#if( configUSE_16_BIT_TICKS == 1 )
-typedef uint16_t TickType_t;
-#define portMAX_DELAY ( TickType_t ) 0xffff
-#else
-typedef uint32_t TickType_t;
-#define portMAX_DELAY ( TickType_t ) 0xffffffffUL
-#endif
 
 #endif/* PORTMACRO_H */
