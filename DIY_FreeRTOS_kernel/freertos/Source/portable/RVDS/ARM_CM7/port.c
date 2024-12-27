@@ -30,6 +30,7 @@ StackType_t *pxPortInitialiseStack(StackType_t * pxTopOfStack, TaskFunction_t px
 	  r2:0
 	  r1:0
 	  r0:Parameters
+		r4~r11:Initialise as zero
 	*/
 	pxTopOfStack--;
 	*pxTopOfStack = protINITIAL_XPSR; //bit24 must be 1, represents 'Thumb' ISA.

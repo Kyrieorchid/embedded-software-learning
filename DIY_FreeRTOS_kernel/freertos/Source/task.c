@@ -20,9 +20,11 @@ static List_t * volatile pxOverflowDelayedTaskList;
 static volatile UBaseType_t uxTopReadyPriority = tskIDLE_PRIORIY;
 static volatile UBaseType_t uxCurrentNumberOfTasks = 0;
 
-#define prvAddTaksToReadyList(pxTCB) \
+#define prvAddTaskToReadyList(pxTCB) \
 				taskRECORD_READY_PRIORITY((pxTCB)->uxPriority); \
 				vListInsertEnd(&(pxReadyTaskLists[(pxTCB)->uxPriority]), &((pxTCB)->xStateListItem));
+				/*¡ü Because of 'InsertEnd', the later a task is unblocked,
+																		the later it is executed in time slicing.*/
 
 /*Look for ready task with the highest priority============================*/
 #if (configUSE_OPTIMISED_TASK_SELECTION == 0)
@@ -178,7 +180,7 @@ static void prvAddNewTaskToReadyList(TCB_t *pxNewTCB)
 			}
 		}
 		
-		prvAddTaksToReadyList(pxNewTCB);
+		prvAddTaskToReadyList(pxNewTCB);
 	}
 	taskEXIT_CRITICAL();
 }
@@ -352,6 +354,7 @@ BaseType_t xTaskIncrementTick(void)
 	TickType_t xItemValue;
 	BaseType_t xSwitchRequired = pdFALSE;
 	
+	//Atom operation
 	const TickType_t xConstTickCount = xTickCount + 1;
 	xTickCount = xConstTickCount;
 	
@@ -375,7 +378,7 @@ BaseType_t xTaskIncrementTick(void)
 		taskSWITCH_DELAYED_LISTS();
 	}
 	
-	if(xConstTickCount >= xNextTaskUnblockTime)// '>=' cause overflow
+	if(xConstTickCount >= xNextTaskUnblockTime)// '>' cause overflow
 	{
 		for(;;)
 		{
@@ -400,7 +403,7 @@ BaseType_t xTaskIncrementTick(void)
 				}
 				
 				(void)uxListRemove(&(pxTCB->xStateListItem));
-				prvAddTaksToReadyList(pxTCB);
+				prvAddTaskToReadyList(pxTCB);
 				
 				#if(configUSE_PREEMPTION == 1)
 				{

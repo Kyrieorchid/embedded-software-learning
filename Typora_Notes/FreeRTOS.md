@@ -1,19 +1,4 @@
-# FreeRTOS入门手册
-
-## 任务管理
-
-## 队列管理
-
-## 中断管理
-
-## 资源管理
-
-## 内存管理
-
-## 错误排查
-
-
-# 野火FreeRTOS-内核实现与应用
+# Kernel based on FreeRTOSv9.0.0
 
 ## A Glance, Coding Style
 
