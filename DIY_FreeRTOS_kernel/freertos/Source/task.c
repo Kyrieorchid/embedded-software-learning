@@ -77,7 +77,7 @@ static volatile UBaseType_t uxCurrentNumberOfTasks = 0;
 		{ \
 			portRESET_READY_PRIORITY((uxPriority), uxTopReadyPriority); \
 		} \
-	}
+	} 
 #else
 	#define taskRESET_READY_PRIORITY(uxPriority) \
 	{ \
