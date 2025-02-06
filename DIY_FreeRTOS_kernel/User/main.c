@@ -54,8 +54,8 @@ int main(void)
 																	(char *)"Task1",
 																	(uint32_t)TASK_STACK_SIZE,
 																	NULL,
-																	(UBaseType_t)2,
 																	(StackType_t *)Task1Stack,
+																	(UBaseType_t)2,
 																	(TCB_t *)&Task1TCB);
 	Task2Handle = xTaskCreateStatic((TaskFunction_t)Task2_Entry,
 																	(char *)"Task2",
@@ -138,9 +138,9 @@ void Task3_Entry(void * pvParameters)
 	for(;;)
 	{
 		flag3 = 1;
-		vTaskDelay(1);
+		vTaskDelay(10);
 		flag3 = 0;
-		vTaskDelay(1);
+		vTaskDelay(10);
 	}
 }
 
