@@ -1,5 +1,5 @@
 from PIL import Image
 
-image = Image.open('./images/ship.png')
+image = Image.open('./images/alien.png')
 
-image.save('./images/ship.bmp', 'BMP')
+image.save('./images/alien.bmp', 'BMP')
