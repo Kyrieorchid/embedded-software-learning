@@ -26,18 +26,23 @@ class AlienInvasion:
         while True:
             #监听事件
             self._check_events()
-            #更新数据
             self.ship.update()
             self._update_bullets()
-            #更新屏幕，根据新数据重新绘制
+            self._update_aliens()
             self._update_screen()
             #控制帧率60
             self.clock.tick(60)
     
+    def _update_aliens(self):
+        self.aliens.update()
+        # for alien in self.aliens.copy():
+        #     if (alien.x + alien.rect.width) > self.settings.screen_width:
+
+
     def _update_bullets(self):
         """更新bullet位置并删除消失的bullet"""
         self.bullets.update()
-        #删除已经消失的bullet
+        #删除已经消失的bullet，迭代对象长度不能变，这里迭代它的副本
         for bullet in self.bullets.copy():
             if bullet.rect.bottom <= 0:
                 self.bullets.remove(bullet)
@@ -76,10 +81,31 @@ class AlienInvasion:
         elif event.key == pygame.K_LEFT:
             self.ship.moving_left = False
 
+    def _create_alien(self, x_position, y_position):
+        new_alien = Alien(self)
+        new_alien.x = x_position
+        new_alien.y = y_position
+        new_alien.rect.x = x_position
+        new_alien.rect.y = y_position
+        self.aliens.add(new_alien)
+
     def _create_fleet(self):
-        """创建alien"""
+        """创建alien-fleet"""
+        #create an instance
         alien = Alien(self)
-        self.aliens.add(alien)
+        alien_width = alien.rect.width
+        alien_height = alien.rect.height
+
+        current_x = alien_width
+        current_y = alien_height
+
+        while (current_y < self.settings.screen_height - 6 * alien_height):
+            while (current_x < self.settings.screen_width - 2 * alien_width):
+                self._create_alien(current_x, current_y)
+                current_x += 2 * alien_width
+            #一排排生成，这里重置x
+            current_x = alien_width
+            current_y += 1.5 * alien_height
 
     def _update_screen(self):
         """更新屏幕，绘制各种矩形"""
