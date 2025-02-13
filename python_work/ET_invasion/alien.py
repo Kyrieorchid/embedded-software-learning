@@ -18,7 +18,13 @@ class Alien(Sprite):
         self.y = float(self.rect.y)
         self.settings = ai_game.settings
 
+    def check_edges(self):
+        """检查是否触碰到边缘"""
+        self_rect = self.screen.get_rect()
+        #单个alien碰到右边或者左边
+        return (self.rect.right >= self_rect.right) or (self.rect.left <= 0)
+
     def update(self):
         """move right"""
-        self.x += self.settings.alien_speed
+        self.x += self.settings.alien_speed * self.settings.fleet_direction
         self.rect.x = self.x
