@@ -1,3 +1,8 @@
+"""
+    Todo: 增加开始按钮（鼠标检测）
+            增加计分、等级系统
+            ...
+"""
 import sys
 import pygame
 from time import sleep
