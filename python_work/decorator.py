@@ -56,6 +56,14 @@ def log(text = None):
                 print("%s %s, decorate test" % (text, fn.__name__))
             return fn(*args, **kv)
         return wrapper
+    return decorator
+
+def log(fn):
+    @functools.wraps(fn)
+    def wrapper(*args, **kv):
+            print("call %s" % fn.__name__)
+            return fn(*args, **kv)
+    return wrapper
 
 @log
 def f1():
