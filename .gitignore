@@ -2,3 +2,5 @@
 **.exe
 build
 __pycache__
+tmp
+bin
